@@ -1,4 +1,4 @@
-### Hi there 👋
+### Hello 👋, everybody! I’m a developer. Nice to meet you. I love programming and my life. I want you to live every day as well as I do!
 
 <!--
 **ZxdNoob/ZxdNoob** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
