@@ -1,16 +1,96 @@
-### Hello 👋, everybody! I’m a developer. Nice to meet you. I love programming and my life. I want you to live every day as well as I do!
+# ZxdNoob
 
-<!--
-**ZxdNoob/ZxdNoob** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
+[![CI](https://github.com/zxdgoing/ZxdNoob/actions/workflows/ci.yml/badge.svg)](https://github.com/zxdgoing/ZxdNoob/actions/workflows/ci.yml)
+[![Deploy frontend (Vercel)](https://github.com/zxdgoing/ZxdNoob/actions/workflows/deploy-vercel.yml/badge.svg)](https://github.com/zxdgoing/ZxdNoob/actions/workflows/deploy-vercel.yml)
+[![Publish backend image](https://github.com/zxdgoing/ZxdNoob/actions/workflows/publish-backend-image.yml/badge.svg)](https://github.com/zxdgoing/ZxdNoob/actions/workflows/publish-backend-image.yml)
 
-Here are some ideas to get you started:
+> Fork 仓库后请把上面徽章链接里的 `zxdgoing/ZxdNoob` 改成你的 `用户名/仓库名`。
 
-- 🔭 I’m currently working on ...
-- 🌱 I’m currently learning ...
-- 👯 I’m looking to collaborate on ...
-- 🤔 I’m looking for help with ...
-- 💬 Ask me about ...
-- 📫 How to reach me: ...
-- 😄 Pronouns: ...
-- ⚡ Fun fact: ...
--->
+**ZxdNoob** 是全栈博客：**Next.js** 前端通过 **REST** 调用 **NestJS** 后端；文章数据保存在 **SQLite**（`better-sqlite3`），不再使用仓库内 Markdown 目录。
+
+## 技术栈
+
+| 层级 | 技术 |
+|------|------|
+| 前端 | Next.js App Router、React、TypeScript、Tailwind CSS |
+| 后端 | NestJS 11、TypeORM、better-sqlite3 |
+| 数据 | SQLite 文件（默认 `backend/data/blog.sqlite`），首次启动自动种子数据 |
+
+## 本地运行（须同时起前后端）
+
+**终端 1 — 后端（先启动，默认 http://127.0.0.1:4000）**
+
+```bash
+cd backend && npm install && npm run start:dev
+```
+
+**终端 2 — 前端（http://localhost:3000）**
+
+```bash
+npm install
+# 建议复制 .env.example 为 .env.local，保证 NEXT_PUBLIC_API_URL 指向后端
+npm run dev
+```
+
+根目录脚本：`npm run dev:api`、`npm run build:api`、`npm run start:api`。
+
+## 环境变量（摘要）
+
+- 根目录 `.env.local`：`NEXT_PUBLIC_SITE_URL`、`NEXT_PUBLIC_API_URL`（及可选服务端专用 `API_URL`）
+- `backend/.env`：`PORT`、`DATABASE_PATH`、`DATABASE_SYNC`、`CORS_ORIGIN`
+
+## 后端 API
+
+- `GET /api/health`
+- `GET /api/posts`：已发布文章摘要（含 `readingMinutes`）
+- `GET /api/posts/:slug`：单篇 Markdown 正文
+
+## 构建
+
+```bash
+npm run build
+npm run build:api
+```
+
+## GitHub 自动部署
+
+推送代码到 GitHub 后，**Actions** 会按工作流执行；页面顶部徽章可点进对应流水线。
+
+| 工作流 | 说明 |
+|--------|------|
+| [CI](.github/workflows/ci.yml) | 对 **main/master** 的 push 与 PR 运行：前端 `lint` + `build`，后端 `lint` + `build` + 单元/E2E 测试 |
+| [Deploy frontend (Vercel)](.github/workflows/deploy-vercel.yml) | 配置了 `VERCEL_*` 密钥时，用 CLI 将 **Next.js** 推到 **Vercel 生产环境**；未配置时该工作流会跳过 |
+| [Publish backend image](.github/workflows/publish-backend-image.yml) | 变更 **backend/** 或手动 **Run workflow** 时构建镜像并推送到 **`ghcr.io/<小写 owner>/<小写 repo>/backend`** |
+| [Dependabot](.github/dependabot.yml) | 每周检查根目录与 `backend/` 的 npm 依赖，发起更新 PR |
+
+仓库根目录 [vercel.json](vercel.json) 指定 `framework: nextjs` 与 `npm ci` / `npm run build`，便于 Vercel 与本地行为一致。
+
+### 前端：推荐用 Vercel 连接 GitHub（零配置 Actions）
+
+1. 登录 [Vercel](https://vercel.com)，**Add New → Project**，导入本仓库。
+2. 在 Project → **Settings → Environment Variables** 中配置：
+   - `NEXT_PUBLIC_SITE_URL`：生产站点根 URL（如 `https://xxx.vercel.app`）
+   - `NEXT_PUBLIC_API_URL`：线上 **Nest API** 根 URL（须与浏览器可访问域名、HTTPS 一致）
+3. 保存后每次 push **main** 会自动构建部署（由 Vercel 托管，不依赖仓库内 `deploy-vercel.yml`）。
+
+若更希望在 **GitHub Actions** 里调用 Vercel CLI 部署，可在仓库 **Settings → Secrets and variables → Actions** 添加 `VERCEL_TOKEN`、`VERCEL_ORG_ID`、`VERCEL_PROJECT_ID`（本地执行 `npx vercel link` 后见 `.vercel/project.json`），再使用 [deploy-vercel.yml](.github/workflows/deploy-vercel.yml)。
+
+### 后端：GitHub Container Registry 镜像
+
+1. push **main/master** 且包含 `backend/` 变更后，Actions 会构建 [backend/Dockerfile](backend/Dockerfile) 并推送到 GHCR。
+2. 首次使用需在 GitHub 仓库右侧 **Packages** 中将该包设为 **Public**（或保持 Private 并在部署机配置 `docker login ghcr.io`）。
+3. 运行示例（持久化 SQLite；镜像地址以 Actions 日志为准，以下为默认命名空间示例）：
+
+```bash
+docker run -d --name zxd-api -p 4000:4000 \
+  -v zxd-sqlite:/app/data \
+  -e CORS_ORIGIN=https://你的前端域名 \
+  -e DATABASE_PATH=/app/data/blog.sqlite \
+  ghcr.io/zxdgoing/zxdnoob/backend:latest
+```
+
+（若仓库名含大写字母，GHCR 路径一律为小写，与 [publish-backend-image.yml](.github/workflows/publish-backend-image.yml) 中规则一致。）
+
+---
+
+*Hello — 热爱编程与生活，愿你我都能把每一天过好。*
